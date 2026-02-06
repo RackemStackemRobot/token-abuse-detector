@@ -7,6 +7,24 @@ def token_fingerprint(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
 
+def compute_risk(ip_count: int, ua_count: int, use_count: int) -> int:
+    score = 0
+
+    if ip_count > 1:
+        score += 30
+
+    if ua_count > 1:
+        score += 20
+
+    if use_count > 10:
+        score += 10
+
+    if score > 100:
+        score = 100
+
+    return score
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Token Abuse Detector (MVP)")
     ap.add_argument("--log", required=True, help="Path to JSONL log file")
@@ -66,11 +84,20 @@ def main() -> int:
         print("")
         return 0
 
-    print("Top tokens by frequency:")
-    for fp, count in sorted(token_counts.items(), key=lambda x: x[1], reverse=True):
+    # Build ranked list
+    ranked = []
+    for fp, use_count in token_counts.items():
         ip_count = len(token_ips.get(fp, set()))
         ua_count = len(token_uas.get(fp, set()))
-        print(f"- {fp}: {count} uses from {ip_count} IP(s), {ua_count} user-agent(s)")
+        risk = compute_risk(ip_count, ua_count, use_count)
+
+        ranked.append((risk, fp, use_count, ip_count, ua_count))
+
+    ranked.sort(reverse=True)
+
+    print("Tokens ranked by risk:")
+    for risk, fp, use_count, ip_count, ua_count in ranked:
+        print(f"- {fp}: risk={risk} uses={use_count} ips={ip_count} uas={ua_count}")
 
     print("")
     print("Potential abuse signals:")
