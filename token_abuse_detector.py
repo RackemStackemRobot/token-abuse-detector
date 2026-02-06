@@ -77,6 +77,7 @@ def extract_user_agent(event: dict):
 def main() -> int:
     ap = argparse.ArgumentParser(description="Token Abuse Detector (MVP)")
     ap.add_argument("--log", required=True, help="Path to JSONL log file")
+    ap.add_argument("--out", required=False, help="Optional path to write JSON report")
     args = ap.parse_args()
 
     token_counts = {}
@@ -160,9 +161,54 @@ def main() -> int:
         print("No multi-IP or multi-user-agent reuse detected.")
 
     print("")
+
+    if args.out:
+        report = {
+            "lines_with_tokens": lines_seen,
+            "unique_tokens": len(token_counts),
+            "tokens": [],
+            "warnings": [],
+        }
+
+        for risk, fp, use_count, ip_count, ua_count in ranked:
+            report["tokens"].append(
+                {
+                    "token_fingerprint": fp,
+                    "risk": risk,
+                    "uses": use_count,
+                    "unique_ips": ip_count,
+                    "unique_user_agents": ua_count,
+                }
+            )
+
+        for fp, ips in token_ips.items():
+            if len(ips) > 1:
+                report["warnings"].append(
+                    {
+                        "kind": "token_reused_multiple_ips",
+                        "token_fingerprint": fp,
+                        "ips": sorted(list(ips)),
+                    }
+                )
+
+        for fp, uas in token_uas.items():
+            if len(uas) > 1:
+                report["warnings"].append(
+                    {
+                        "kind": "token_reused_multiple_user_agents",
+                        "token_fingerprint": fp,
+                        "user_agents": sorted(list(uas)),
+                    }
+                )
+
+        with open(args.out, "w", encoding="utf-8") as out_f:
+            json.dump(report, out_f, indent=2)
+
+        print(f"Wrote JSON report to: {args.out}")
+        print("")
+
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
