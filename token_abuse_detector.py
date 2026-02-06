@@ -14,6 +14,7 @@ def main() -> int:
 
     token_counts = {}
     token_ips = {}
+    token_uas = {}
     lines_seen = 0
 
     with open(args.log, "r", encoding="utf-8") as f:
@@ -32,6 +33,7 @@ def main() -> int:
 
             token = event.get("token")
             ip = event.get("ip")
+            ua = event.get("user_agent")
 
             if not isinstance(token, str) or not token.strip():
                 continue
@@ -44,9 +46,14 @@ def main() -> int:
 
             if fp not in token_ips:
                 token_ips[fp] = set()
+            if fp not in token_uas:
+                token_uas[fp] = set()
 
             if isinstance(ip, str) and ip.strip():
                 token_ips[fp].add(ip.strip())
+
+            if isinstance(ua, str) and ua.strip():
+                token_uas[fp].add(ua.strip())
 
     print("")
     print("Token Abuse Detector (MVP)")
@@ -62,18 +69,25 @@ def main() -> int:
     print("Top tokens by frequency:")
     for fp, count in sorted(token_counts.items(), key=lambda x: x[1], reverse=True):
         ip_count = len(token_ips.get(fp, set()))
-        print(f"- {fp}: {count} uses from {ip_count} IP(s)")
+        ua_count = len(token_uas.get(fp, set()))
+        print(f"- {fp}: {count} uses from {ip_count} IP(s), {ua_count} user-agent(s)")
 
     print("")
     print("Potential abuse signals:")
     found_any = False
+
     for fp, ips in token_ips.items():
         if len(ips) > 1:
             found_any = True
             print(f"WARNING: Token {fp} used from multiple IPs: {', '.join(sorted(ips))}")
 
+    for fp, uas in token_uas.items():
+        if len(uas) > 1:
+            found_any = True
+            print(f"WARNING: Token {fp} used from multiple user agents: {', '.join(sorted(uas))}")
+
     if not found_any:
-        print("No multi-IP token reuse detected.")
+        print("No multi-IP or multi-user-agent reuse detected.")
 
     print("")
     return 0
