@@ -78,6 +78,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Token Abuse Detector (MVP)")
     ap.add_argument("--log", required=True, help="Path to JSONL log file")
     ap.add_argument("--out", required=False, help="Optional path to write JSON report")
+    ap.add_argument("--min-risk", type=int, default=0, help="Only show tokens with risk >= this value")
     args = ap.parse_args()
 
     token_counts = {}
@@ -141,6 +142,8 @@ def main() -> int:
 
     print("Tokens ranked by risk:")
     for risk, fp, use_count, ip_count, ua_count in ranked:
+        if risk < args.min_risk:
+            continue
         print(f"- {fp}: risk={risk} uses={use_count} ips={ip_count} uas={ua_count}")
 
     print("")
@@ -150,12 +153,14 @@ def main() -> int:
     for fp, ips in token_ips.items():
         if len(ips) > 1:
             found_any = True
-            print(f"WARNING: Token {fp} used from multiple IPs: {', '.join(sorted(ips))}")
+            if compute_risk(len(ips), len(token_uas.get(fp, [])), token_counts.get(fp, 0)) >= args.min_risk:
+                print(f"WARNING: Token {fp} used from multiple IPs: {', '.join(sorted(ips))}")
 
     for fp, uas in token_uas.items():
         if len(uas) > 1:
             found_any = True
-            print(f"WARNING: Token {fp} used from multiple user agents: {', '.join(sorted(uas))}")
+            if compute_risk(len(token_ips.get(fp, [])), len(uas), token_counts.get(fp, 0)) >= args.min_risk:
+                print(f"WARNING: Token {fp} used from multiple user agents: {', '.join(sorted(uas))}")
 
     if not found_any:
         print("No multi-IP or multi-user-agent reuse detected.")
@@ -171,6 +176,8 @@ def main() -> int:
         }
 
         for risk, fp, use_count, ip_count, ua_count in ranked:
+            if risk < args.min_risk:
+                continue
             report["tokens"].append(
                 {
                     "token_fingerprint": fp,
@@ -183,23 +190,27 @@ def main() -> int:
 
         for fp, ips in token_ips.items():
             if len(ips) > 1:
-                report["warnings"].append(
-                    {
-                        "kind": "token_reused_multiple_ips",
-                        "token_fingerprint": fp,
-                        "ips": sorted(list(ips)),
-                    }
-                )
+                risk = compute_risk(len(ips), len(token_uas.get(fp, [])), token_counts.get(fp, 0))
+                if risk >= args.min_risk:
+                    report["warnings"].append(
+                        {
+                            "kind": "token_reused_multiple_ips",
+                            "token_fingerprint": fp,
+                            "ips": sorted(list(ips)),
+                        }
+                    )
 
         for fp, uas in token_uas.items():
             if len(uas) > 1:
-                report["warnings"].append(
-                    {
-                        "kind": "token_reused_multiple_user_agents",
-                        "token_fingerprint": fp,
-                        "user_agents": sorted(list(uas)),
-                    }
-                )
+                risk = compute_risk(len(token_ips.get(fp, [])), len(uas), token_counts.get(fp, 0))
+                if risk >= args.min_risk:
+                    report["warnings"].append(
+                        {
+                            "kind": "token_reused_multiple_user_agents",
+                            "token_fingerprint": fp,
+                            "user_agents": sorted(list(uas)),
+                        }
+                    )
 
         with open(args.out, "w", encoding="utf-8") as out_f:
             json.dump(report, out_f, indent=2)
