@@ -1,4 +1,4 @@
-{"timestamp":"2026-02-06T18:10:12Z","ip":"10.0.0.8","token":"tok_test_alpha","user_agent":"Mozilla/5.0"}
-{"timestamp":"2026-02-06T18:10:13Z","ip":"10.0.0.8","token":"tok_test_alpha","user_agent":"Mozilla/5.0"}
-{"timestamp":"2026-02-06T18:10:14Z","ip":"198.51.100.45","token":"tok_test_alpha","user_agent":"curl/8.5.0"}
-{"timestamp":"2026-02-06T18:10:15Z","ip":"203.0.113.9","token":"tok_test_bravo","user_agent":"Mozilla/5.0"}
+{"timestamp":"2026-02-06T18:10:12Z","headers":{"Authorization":"Bearer tok_test_alpha","User-Agent":"Mozilla/5.0","X-Forwarded-For":"10.0.0.8"}}
+{"timestamp":"2026-02-06T18:10:13Z","headers":{"Authorization":"Bearer tok_test_alpha","User-Agent":"Mozilla/5.0","X-Forwarded-For":"10.0.0.8"}}
+{"timestamp":"2026-02-06T18:10:14Z","headers":{"Authorization":"Bearer tok_test_alpha","User-Agent":"curl/8.5.0","X-Forwarded-For":"198.51.100.45"}}
+{"timestamp":"2026-02-06T18:10:15Z","headers":{"Authorization":"Bearer tok_test_bravo","User-Agent":"Mozilla/5.0","X-Forwarded-For":"203.0.113.9"}}
